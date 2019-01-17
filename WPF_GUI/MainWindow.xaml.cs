@@ -17,6 +17,7 @@ using WinForms = System.Windows.Forms;
 using osuDatabase = OsuDbAPI;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
+using System.Drawing;
 
 namespace GUI
 {
@@ -536,7 +537,6 @@ namespace GUI
             progressBar_Analyzing.Value = 0;
             Task.Run(() =>
             {
-
                 if (listReplays.Count > 0)
                 {
 
@@ -712,6 +712,117 @@ DO NOT jump into conclusions without good evidence.",
 
 
             dialog.Show();
+        }
+
+        private void GenerateClickArea_Click(object sender, RoutedEventArgs e)
+        {
+            labelTask.Content="Generating hit area pictures...";
+            progressBar_Analyzing.Value=0;
+            Task.Run(() =>
+            {
+                if (listReplays.Count>0)
+                {
+                    foreach (Replay replay in listReplays)
+                    {
+                        doOnUIThread(() => progressBar_Analyzing.Value+=(100.0/listReplays.Count));
+
+                        var beatmap = FindBeatmapInDatabase(replay);
+
+                        var analyzer = new ReplayAnalyzer(beatmap, replay);
+                        var hits = analyzer.hits;
+                        var attemptedHits = analyzer.attemptedHits;
+
+                        int hitIndex = 0;
+                        Bitmap bitmap = new Bitmap(1920, 1080);
+
+                        float prev_x=0, prev_y =1080 - 0,prev_time=0;
+
+                        using (var graphics = Graphics.FromImage(bitmap))
+                        {
+                            Pen pen = new Pen(Color.Red);
+                            Pen pen_base = new Pen(Color.AliceBlue);
+                            var font = new Font("黑体",25);
+                            var time_font = new Font("黑体",15);
+                            Brush brush = new SolidBrush(pen_base.Color);
+                            Pen time_pen = new Pen(Color.LightGreen);
+                            Brush time_brush_prev = new SolidBrush(Color.LightYellow);
+                            Brush time_brush = new SolidBrush(Color.LightGreen);
+
+
+                            var max_y_val = hits.Max(x => x.Perfectness)*1.1d;
+                            var max_x_val = hits.Max(x => x.frame.Time)*1.0d;
+
+                            var radius =(float)hits.Select(x => x.note.Radius).FirstOrDefault();
+                            Debug.Assert(hits.Select(x => x.note.Radius).FirstOrDefault()==hits.Select(x => x.note.Radius).LastOrDefault());
+
+                            var base_line_y =1080 - (float)(radius/max_y_val*1080.0f);
+
+                            graphics.DrawString($"cs {beatmap.CircleSize}:({radius} pixels)", font, brush,0, base_line_y);
+
+                            graphics.DrawLine(pen_base, 0, base_line_y, 1920, base_line_y);
+
+                            for (int i = 0; i<replay.ReplayFrames.Count; i++)
+                            {
+                                if (hitIndex<hits.Count&&hits[hitIndex].frame.Time==replay.ReplayFrames[i].Time)
+                                {
+                                    var hit = hits[hitIndex];
+
+                                    var y = 1080-(float)(hit.Perfectness*1.0f/max_y_val)*1080;//反过来
+                                    var x = (float)(hit.frame.Time*1.0f/max_x_val)*1920;
+
+                                    if (Math.Abs(prev_time-hit.frame.Time)>5_000)
+                                    {
+                                        graphics.DrawLine(time_pen, prev_x, 0, prev_x, 100);
+                                        graphics.DrawString($"{prev_time}", time_font, time_brush_prev, prev_x, 0);
+
+                                        graphics.DrawLine(time_pen, x, 0, x, 100);
+                                        graphics.DrawString($"{hit.frame.Time}", time_font, time_brush, x, 50);
+                                    }
+
+                                    graphics.DrawLine(pen, x, y-4, x, y+4);
+
+                                    prev_x=x;
+                                    prev_y=y;
+                                    prev_time=hit.frame.Time;
+
+                                    hitIndex++;
+                                }
+                            }
+
+                            pen.Dispose();
+                            pen_base.Dispose();
+                            brush.Dispose();
+                            time_brush_prev.Dispose();
+                            time_brush.Dispose();
+                            time_pen.Dispose();
+                            time_font.Dispose();
+                            font.Dispose();
+                            graphics.Flush();
+                        }
+
+                        doOnUIThread(() =>
+                        {
+                            var saveReportDialog = new SaveFileDialog
+                            {
+                                FileName=Path.GetFileName(replay.Filename)+"_hit.png",
+                                Filter="Png File|*.png;"
+                            };
+
+                            if (saveReportDialog.ShowDialog()??true)
+                            {
+                                bitmap.Save(saveReportDialog.FileName);
+                                bitmap.Dispose();
+                            }
+                        });
+                    }
+                }
+                else
+                {
+                    doOnUIThread(() => MessageBox.Show("Error! No replays selected."));
+                }
+
+                doOnUIThread(() => labelTask.Content="Finished generating hit area pictures.");
+            });
         }
     }
 }

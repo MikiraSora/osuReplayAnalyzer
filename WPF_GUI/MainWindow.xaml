@@ -26,5 +26,6 @@
         <Button x:Name="rawFeatures_button" Content="Raw features data" HorizontalAlignment="Left" Margin="228,83,0,0" VerticalAlignment="Top" Width="103" Height="20" FontSize="10" Click="rawFeatures_button_Click"/>
         <Button x:Name="exit_button" Content="Exit" HorizontalAlignment="Left" VerticalAlignment="Top" Width="105" Margin="336,202,0,0" Height="20" Click="exit_button_Click" FontSize="10"/>
         <Button x:Name="help_button" Content="About" HorizontalAlignment="Left" VerticalAlignment="Top" Width="103" Margin="228,118,0,0" Height="20" Click="help_button_Click" FontSize="10"/>
+        <Button x:Name="GenerateClickArea" Content="Generate Hit Pic" Click="GenerateClickArea_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="228,152,0,0" Height="20" Width="103" FontSize="10"></Button>
     </Grid>
 </Window>
